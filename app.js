@@ -121,3 +121,6 @@ onSnapshot(consulta, (snapshot) => {
   ultimosDatos = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
   dibujarLista(ultimosDatos);
 });
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
