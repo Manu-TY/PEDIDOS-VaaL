@@ -18,9 +18,9 @@ const db = getFirestore(app);
 
 // EDITÁ ESTA LISTA con tus proveedores reales (entre comillas, separados por coma)
 const PROVEEDORES = [
-  "Proveedor 1",
-  "Proveedor 2",
-  "Proveedor 3"
+  "CROMOSOL",
+  "CHEVROLET",
+  "LIDERCAR"
 ];
 
 const formulario = document.getElementById("formulario");
