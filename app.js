@@ -1,18 +1,9 @@
-// 1. Traemos las funciones de Firebase que necesitamos, desde internet (CDN)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  onSnapshot,
-  doc,
-  updateDoc,
-  serverTimestamp,
-  query,
-  orderBy
+  getFirestore, collection, addDoc, onSnapshot,
+  doc, updateDoc, serverTimestamp, query, orderBy
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 
-// 2. Tu configuración de Firebase (la de tu proyecto "PEDIDOS VaaL")
 const firebaseConfig = {
   apiKey: "AIzaSyDzyKXHwFNHsUrFLUYiPp2AKzoHR1uAXNI",
   authDomain: "pedidos-vaal.firebaseapp.com",
@@ -22,61 +13,100 @@ const firebaseConfig = {
   appId: "1:398683633525:web:3411395c3276bed350453c"
 };
 
-// 3. Inicializamos Firebase y la base de datos
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 4. Buscamos los elementos del HTML que vamos a usar
+// EDITÁ ESTA LISTA con tus proveedores reales (entre comillas, separados por coma)
+const PROVEEDORES = [
+  "Proveedor 1",
+  "Proveedor 2",
+  "Proveedor 3"
+];
+
 const formulario = document.getElementById("formulario");
+const selectProveedor = document.getElementById("selectProveedor");
 const inputItem = document.getElementById("inputItem");
 const lista = document.getElementById("lista");
+const pestañasDiv = document.getElementById("pestañas");
 
-// 5. Referencia a la "colección" (carpeta) de Firestore donde viven los faltantes
+let proveedorActivo = "Todos";
+let ultimosDatos = [];
+
+// Llenamos el <select> del formulario con los proveedores
+PROVEEDORES.forEach((nombre) => {
+  const opcion = document.createElement("option");
+  opcion.value = nombre;
+  opcion.textContent = nombre;
+  selectProveedor.appendChild(opcion);
+});
+
+// Dibuja las pestañas: "Todos" + una por proveedor
+function dibujarPestañas() {
+  pestañasDiv.innerHTML = "";
+  const nombres = ["Todos", ...PROVEEDORES];
+
+  nombres.forEach((nombre) => {
+    const pestaña = document.createElement("div");
+    pestaña.textContent = nombre;
+    pestaña.classList.add("pestaña");
+    if (nombre === proveedorActivo) pestaña.classList.add("activa");
+
+    pestaña.addEventListener("click", () => {
+      proveedorActivo = nombre;
+      dibujarPestañas();
+      dibujarLista(ultimosDatos);
+    });
+
+    pestañasDiv.appendChild(pestaña);
+  });
+}
+dibujarPestañas();
+
 const faltantesRef = collection(db, "faltantes");
 
-// 6. Cuando se envía el formulario, agregamos un nuevo faltante
 formulario.addEventListener("submit", async (evento) => {
-  evento.preventDefault(); // evita que la página se recargue
-
+  evento.preventDefault();
   const texto = inputItem.value.trim();
-  if (texto === "") return; // si está vacío, no hace nada
+  if (texto === "") return;
 
   await addDoc(faltantesRef, {
     texto: texto,
+    proveedor: selectProveedor.value,
     llegado: false,
     creado: serverTimestamp()
   });
 
-  inputItem.value = ""; // limpiamos el cuadro de texto
+  inputItem.value = "";
 });
 
-// 7. Escuchamos cambios en tiempo real y dibujamos la lista
+function dibujarLista(items) {
+  lista.innerHTML = "";
+
+  items
+    .filter((item) => proveedorActivo === "Todos" || item.proveedor === proveedorActivo)
+    .forEach((item) => {
+      const li = document.createElement("li");
+      if (item.llegado) li.classList.add("llegado");
+
+      li.innerHTML = `
+        <input type="checkbox" ${item.llegado ? "checked" : ""}>
+        <span class="texto">${item.texto}</span>
+        <span class="proveedor">${item.proveedor || ""}</span>
+      `;
+
+      const checkbox = li.querySelector("input");
+      checkbox.addEventListener("change", async () => {
+        const itemRef = doc(db, "faltantes", item.id);
+        await updateDoc(itemRef, { llegado: checkbox.checked });
+      });
+
+      lista.appendChild(li);
+    });
+}
+
 const consulta = query(faltantesRef, orderBy("creado", "desc"));
 
 onSnapshot(consulta, (snapshot) => {
-  lista.innerHTML = ""; // borramos la lista actual para redibujarla
-
-  snapshot.forEach((docSnap) => {
-    const item = docSnap.data();
-    const id = docSnap.id;
-
-    const li = document.createElement("li");
-    if (item.llegado) {
-      li.classList.add("llegado");
-    }
-
-    li.innerHTML = `
-      <input type="checkbox" ${item.llegado ? "checked" : ""}>
-      <span>${item.texto}</span>
-    `;
-
-    // Cuando se hace clic en el checkbox, marcamos como llegado/no llegado
-    const checkbox = li.querySelector("input");
-    checkbox.addEventListener("change", async () => {
-      const itemRef = doc(db, "faltantes", id);
-      await updateDoc(itemRef, { llegado: checkbox.checked });
-    });
-
-    lista.appendChild(li);
-  });
+  ultimosDatos = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  dibujarLista(ultimosDatos);
 });
