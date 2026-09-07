@@ -6,48 +6,19 @@
   <title>Pedidos VaaL - Faltantes</title>
   <link rel="manifest" href="manifest.json">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 700px;
-      margin: 0 auto;
-      padding: 20px;
-      background: #f4f4f4;
-    }
-    h1 {
-      color: #333;
-    }
-    #formulario {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-    #inputItem {
-      flex: 1;
-      padding: 10px;
-      font-size: 16px;
-    }
-    button {
-      padding: 10px 16px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-    li {
-      background: white;
-      padding: 12px;
-      margin-bottom: 8px;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    li.llegado span {
-      text-decoration: line-through;
-      color: #999;
-    }
+    body { font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; background: #f4f4f4; }
+    h1 { color: #333; }
+    #formulario { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    #selectProveedor, #inputItem { padding: 10px; font-size: 16px; }
+    #inputItem { flex: 1; min-width: 200px; }
+    button { padding: 10px 16px; font-size: 16px; cursor: pointer; }
+    #pestañas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+    .pestaña { padding: 8px 12px; background: #ddd; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    .pestaña.activa { background: #333; color: white; }
+    ul { list-style: none; padding: 0; }
+    li { background: white; padding: 12px; margin-bottom: 8px; border-radius: 6px; display: flex; align-items: center; gap: 10px; }
+    li .proveedor { font-size: 12px; color: #888; margin-left: auto; }
+    li.llegado span.texto { text-decoration: line-through; color: #999; }
   </style>
 </head>
 <body>
@@ -55,9 +26,51 @@
   <h1>Repuestos faltantes</h1>
 
   <form id="formulario">
+    <select id="selectProveedor"></select>
     <input type="text" id="inputItem" placeholder="Ej: filtro de aceite Hilux x3" required>
     <button type="submit">Agregar</button>
   </form>
+
+  <div id="pestañas"></div>
+
+  <ul id="lista"></ul>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html><!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pedidos VaaL - Faltantes</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; background: #f4f4f4; }
+    h1 { color: #333; }
+    #formulario { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    #selectProveedor, #inputItem { padding: 10px; font-size: 16px; }
+    #inputItem { flex: 1; min-width: 200px; }
+    button { padding: 10px 16px; font-size: 16px; cursor: pointer; }
+    #pestañas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+    .pestaña { padding: 8px 12px; background: #ddd; border-radius: 6px; cursor: pointer; font-size: 14px; }
+    .pestaña.activa { background: #333; color: white; }
+    ul { list-style: none; padding: 0; }
+    li { background: white; padding: 12px; margin-bottom: 8px; border-radius: 6px; display: flex; align-items: center; gap: 10px; }
+    li .proveedor { font-size: 12px; color: #888; margin-left: auto; }
+    li.llegado span.texto { text-decoration: line-through; color: #999; }
+  </style>
+</head>
+<body>
+
+  <h1>Repuestos faltantes</h1>
+
+  <form id="formulario">
+    <select id="selectProveedor"></select>
+    <input type="text" id="inputItem" placeholder="Ej: filtro de aceite Hilux x3" required>
+    <button type="submit">Agregar</button>
+  </form>
+
+  <div id="pestañas"></div>
 
   <ul id="lista"></ul>
 
