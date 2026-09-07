@@ -20,7 +20,18 @@ const db = getFirestore(app);
 const PROVEEDORES = [
   "CROMOSOL",
   "CHEVROLET",
-  "LIDERCAR"
+  "LIDERCAR",
+  "KAVIGO",
+  "DISTRIB OMAR",
+  "FIAT",
+  "RICARDO MR",
+  "SABO",
+  "AUTONAUTICA",
+  "ALTRI",
+  "PASTILLAS",
+  "PEUGEOT",
+  "PATTI",
+  "KUARZO"
 ];
 
 const formulario = document.getElementById("formulario");
