@@ -16,7 +16,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const PROVEEDORES = [
+// Estos son los proveedores que ya tenías. Se usan SOLO una vez,
+// para crearlos en la base de datos si todavía no existe ninguno.
+const PROVEEDORES_INICIALES = [
   "CROMOSOL", "CHEVROLET", "LIDERCAR", "KAVIGO", "DISTRIB OMAR",
   "FIAT", "RICARDO MR", "SABO", "AUTONAUTICA", "ALTRI",
   "PASTILLAS", "PEUGEOT", "PATTI", "KUARZO"
@@ -30,22 +32,78 @@ const selectProveedor = document.getElementById("selectProveedor");
 const inputItem = document.getElementById("inputItem");
 const lista = document.getElementById("lista");
 const pestañasDiv = document.getElementById("pestañas");
+const botonNuevoProveedor = document.getElementById("botonNuevoProveedor");
+const formNuevoProveedor = document.getElementById("formNuevoProveedor");
+const inputNuevoProveedor = document.getElementById("inputNuevoProveedor");
 const botonArchivados = document.getElementById("botonArchivados");
 
 let proveedorActivo = "Todos";
+let listaProveedores = [];
 let ultimosDatos = [];
 let mostrandoArchivados = false;
+let yaSembrado = false; // para no crear los proveedores iniciales más de una vez
 
-PROVEEDORES.forEach((nombre) => {
-  const opcion = document.createElement("option");
-  opcion.value = nombre;
-  opcion.textContent = nombre;
-  selectProveedor.appendChild(opcion);
+const faltantesRef = collection(db, "faltantes");
+const proveedoresRef = collection(db, "proveedores");
+
+// --- Mostrar / ocultar el formulario de "nuevo proveedor" ---
+botonNuevoProveedor.addEventListener("click", () => {
+  formNuevoProveedor.classList.toggle("visible");
+  inputNuevoProveedor.focus();
 });
 
+formNuevoProveedor.addEventListener("submit", async (evento) => {
+  evento.preventDefault();
+  const nombre = inputNuevoProveedor.value.trim().toUpperCase();
+  if (nombre === "") return;
+
+  // Evitamos duplicados (comparando en mayúsculas)
+  const yaExiste = listaProveedores.some((p) => p.toUpperCase() === nombre);
+  if (yaExiste) {
+    alert("Ese proveedor ya existe.");
+    return;
+  }
+
+  await addDoc(proveedoresRef, { nombre: nombre });
+  inputNuevoProveedor.value = "";
+  formNuevoProveedor.classList.remove("visible");
+});
+
+// --- Escuchamos los proveedores en tiempo real ---
+onSnapshot(proveedoresRef, async (snapshot) => {
+  if (snapshot.empty && !yaSembrado) {
+    // No hay proveedores todavía: los creamos a partir de la lista inicial
+    yaSembrado = true;
+    for (const nombre of PROVEEDORES_INICIALES) {
+      await addDoc(proveedoresRef, { nombre: nombre });
+    }
+    return; // el propio onSnapshot se va a volver a disparar solo, con los datos ya creados
+  }
+
+  listaProveedores = snapshot.docs
+    .map((docSnap) => docSnap.data().nombre)
+    .sort((a, b) => a.localeCompare(b));
+
+  dibujarSelect();
+  dibujarPestañas();
+  dibujarLista(ultimosDatos);
+});
+
+function dibujarSelect() {
+  selectProveedor.innerHTML = "";
+  listaProveedores.forEach((nombre) => {
+    const opcion = document.createElement("option");
+    opcion.value = nombre;
+    opcion.textContent = nombre;
+    selectProveedor.appendChild(opcion);
+  });
+}
+
 function dibujarPestañas() {
-  pestañasDiv.innerHTML = "";
-  const nombres = ["Todos", ...PROVEEDORES];
+  // Borramos todo excepto el botón "+ Proveedor", que ya está fijo en el HTML
+  pestañasDiv.querySelectorAll(".pestaña").forEach((el) => el.remove());
+
+  const nombres = ["Todos", ...listaProveedores];
 
   nombres.forEach((nombre) => {
     const pestaña = document.createElement("div");
@@ -59,19 +117,16 @@ function dibujarPestañas() {
       dibujarLista(ultimosDatos);
     });
 
-    pestañasDiv.appendChild(pestaña);
+    // Insertamos cada pestaña ANTES del botón "+ Proveedor", para que ese quede siempre al final
+    pestañasDiv.insertBefore(pestaña, botonNuevoProveedor);
   });
 }
-dibujarPestañas();
 
-// Al hacer clic en "Ver archivados" / "Ver activos", cambiamos de vista
 botonArchivados.addEventListener("click", () => {
   mostrandoArchivados = !mostrandoArchivados;
   botonArchivados.textContent = mostrandoArchivados ? "← Volver a faltantes" : "Ver archivados";
   dibujarLista(ultimosDatos);
 });
-
-const faltantesRef = collection(db, "faltantes");
 
 formulario.addEventListener("submit", async (evento) => {
   evento.preventDefault();
@@ -89,7 +144,6 @@ formulario.addEventListener("submit", async (evento) => {
   inputItem.value = "";
 });
 
-// Calcula si un ítem llegado ya pasó los 7 días
 function estaArchivado(item) {
   if (!item.llegado || !item.llegadoEn) return false;
   const ahora = Date.now();
@@ -97,7 +151,6 @@ function estaArchivado(item) {
   return (ahora - fechaLlegada) > (DIAS_PARA_ARCHIVAR * MILISEGUNDOS_POR_DIA);
 }
 
-// Formatea la fecha en algo legible, ej: "05/09/2026"
 function formatearFecha(timestamp) {
   if (!timestamp) return "";
   const fecha = timestamp.toDate();
@@ -140,9 +193,9 @@ function dibujarLista(items) {
     });
 }
 
-const consulta = query(faltantesRef, orderBy("creado", "desc"));
+const consultaFaltantes = query(faltantesRef, orderBy("creado", "desc"));
 
-onSnapshot(consulta, (snapshot) => {
+onSnapshot(consultaFaltantes, (snapshot) => {
   ultimosDatos = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
   dibujarLista(ultimosDatos);
 });
