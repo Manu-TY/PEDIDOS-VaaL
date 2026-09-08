@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 import {
   getFirestore, collection, addDoc, onSnapshot,
-  doc, updateDoc, serverTimestamp, query, orderBy
+  doc, updateDoc, deleteDoc, serverTimestamp, query, orderBy
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -16,8 +16,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Estos son los proveedores que ya tenías. Se usan SOLO una vez,
-// para crearlos en la base de datos si todavía no existe ninguno.
 const PROVEEDORES_INICIALES = [
   "CROMOSOL", "CHEVROLET", "LIDERCAR", "KAVIGO", "DISTRIB OMAR",
   "FIAT", "RICARDO MR", "SABO", "AUTONAUTICA", "ALTRI",
@@ -35,18 +33,21 @@ const pestañasDiv = document.getElementById("pestañas");
 const botonNuevoProveedor = document.getElementById("botonNuevoProveedor");
 const formNuevoProveedor = document.getElementById("formNuevoProveedor");
 const inputNuevoProveedor = document.getElementById("inputNuevoProveedor");
+const botonPasarPedido = document.getElementById("botonPasarPedido");
 const botonArchivados = document.getElementById("botonArchivados");
 
 let proveedorActivo = "Todos";
 let listaProveedores = [];
+let listaCortes = [];
 let ultimosDatos = [];
 let mostrandoArchivados = false;
-let yaSembrado = false; // para no crear los proveedores iniciales más de una vez
+let yaSembrado = false;
 
 const faltantesRef = collection(db, "faltantes");
 const proveedoresRef = collection(db, "proveedores");
+const cortesRef = collection(db, "cortes");
 
-// --- Mostrar / ocultar el formulario de "nuevo proveedor" ---
+// --- Nuevo proveedor ---
 botonNuevoProveedor.addEventListener("click", () => {
   formNuevoProveedor.classList.toggle("visible");
   inputNuevoProveedor.focus();
@@ -57,8 +58,7 @@ formNuevoProveedor.addEventListener("submit", async (evento) => {
   const nombre = inputNuevoProveedor.value.trim().toUpperCase();
   if (nombre === "") return;
 
-  // Evitamos duplicados (comparando en mayúsculas)
-  const yaExiste = listaProveedores.some((p) => p.toUpperCase() === nombre);
+  const yaExiste = listaProveedores.some((p) => p.nombre.toUpperCase() === nombre);
   if (yaExiste) {
     alert("Ese proveedor ya existe.");
     return;
@@ -69,65 +69,135 @@ formNuevoProveedor.addEventListener("submit", async (evento) => {
   formNuevoProveedor.classList.remove("visible");
 });
 
-// --- Escuchamos los proveedores en tiempo real ---
+// --- Borrar proveedor ---
+async function borrarProveedor(prov) {
+  const tienePendientes = ultimosDatos.some(
+    (item) => item.proveedor === prov.nombre && !item.llegado
+  );
+
+  if (tienePendientes) {
+    alert(`No se puede borrar "${prov.nombre}": todavía tiene faltantes pendientes. Resolvelos primero.`);
+    return;
+  }
+
+  const confirmar = confirm(`¿Seguro que querés borrar el proveedor "${prov.nombre}"?`);
+  if (!confirmar) return;
+
+  await deleteDoc(doc(db, "proveedores", prov.id));
+
+  if (proveedorActivo === prov.nombre) {
+    proveedorActivo = "Todos";
+  }
+}
+
+// --- Proveedores en tiempo real ---
 onSnapshot(proveedoresRef, async (snapshot) => {
   if (snapshot.empty && !yaSembrado) {
-    // No hay proveedores todavía: los creamos a partir de la lista inicial
     yaSembrado = true;
     for (const nombre of PROVEEDORES_INICIALES) {
       await addDoc(proveedoresRef, { nombre: nombre });
     }
-    return; // el propio onSnapshot se va a volver a disparar solo, con los datos ya creados
+    return;
   }
 
   listaProveedores = snapshot.docs
-    .map((docSnap) => docSnap.data().nombre)
-    .sort((a, b) => a.localeCompare(b));
+    .map((docSnap) => ({ id: docSnap.id, nombre: docSnap.data().nombre }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   dibujarSelect();
   dibujarPestañas();
+  actualizarBotonPasarPedido();
   dibujarLista(ultimosDatos);
 });
 
 function dibujarSelect() {
   selectProveedor.innerHTML = "";
-  listaProveedores.forEach((nombre) => {
+  listaProveedores.forEach((prov) => {
     const opcion = document.createElement("option");
-    opcion.value = nombre;
-    opcion.textContent = nombre;
+    opcion.value = prov.nombre;
+    opcion.textContent = prov.nombre;
     selectProveedor.appendChild(opcion);
   });
 }
 
 function dibujarPestañas() {
-  // Borramos todo excepto el botón "+ Proveedor", que ya está fijo en el HTML
   pestañasDiv.querySelectorAll(".pestaña").forEach((el) => el.remove());
 
-  const nombres = ["Todos", ...listaProveedores];
+  const nombres = ["Todos", ...listaProveedores.map((p) => p.nombre)];
 
   nombres.forEach((nombre) => {
     const pestaña = document.createElement("div");
-    pestaña.textContent = nombre;
     pestaña.classList.add("pestaña");
     if (nombre === proveedorActivo) pestaña.classList.add("activa");
+
+    const etiqueta = document.createElement("span");
+    etiqueta.textContent = nombre;
+    pestaña.appendChild(etiqueta);
 
     pestaña.addEventListener("click", () => {
       proveedorActivo = nombre;
       dibujarPestañas();
+      actualizarBotonPasarPedido();
       dibujarLista(ultimosDatos);
     });
 
-    // Insertamos cada pestaña ANTES del botón "+ Proveedor", para que ese quede siempre al final
+    if (nombre !== "Todos") {
+      const prov = listaProveedores.find((p) => p.nombre === nombre);
+      const borrar = document.createElement("span");
+      borrar.textContent = "×";
+      borrar.classList.add("borrar-proveedor");
+      borrar.addEventListener("click", (evento) => {
+        evento.stopPropagation(); // para que no dispare el clic de la pestaña
+        borrarProveedor(prov);
+      });
+      pestaña.appendChild(borrar);
+    }
+
     pestañasDiv.insertBefore(pestaña, botonNuevoProveedor);
   });
 }
 
-botonArchivados.addEventListener("click", () => {
-  mostrandoArchivados = !mostrandoArchivados;
-  botonArchivados.textContent = mostrandoArchivados ? "← Volver a faltantes" : "Ver archivados";
+function actualizarBotonPasarPedido() {
+  const debeVerse = proveedorActivo !== "Todos" && !mostrandoArchivados;
+  botonPasarPedido.classList.toggle("visible", debeVerse);
+}
+
+// --- Pasar pedido (crear un corte) ---
+botonPasarPedido.addEventListener("click", async () => {
+  const pendientes = ultimosDatos.filter(
+    (item) => item.proveedor === proveedorActivo && !item.llegado && !item.corteId
+  );
+
+  if (pendientes.length === 0) {
+    alert("No hay faltantes nuevos para pasar a pedido en este proveedor.");
+    return;
+  }
+
+  const nuevoCorte = await addDoc(cortesRef, {
+    proveedor: proveedorActivo,
+    fecha: serverTimestamp()
+  });
+
+  for (const item of pendientes) {
+    await updateDoc(doc(db, "faltantes", item.id), { corteId: nuevoCorte.id });
+  }
+});
+
+// --- Cortes en tiempo real ---
+onSnapshot(query(cortesRef, orderBy("fecha", "asc")), (snapshot) => {
+  listaCortes = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
   dibujarLista(ultimosDatos);
 });
 
+// --- Ver archivados ---
+botonArchivados.addEventListener("click", () => {
+  mostrandoArchivados = !mostrandoArchivados;
+  botonArchivados.textContent = mostrandoArchivados ? "← Volver a faltantes" : "Ver archivados";
+  actualizarBotonPasarPedido();
+  dibujarLista(ultimosDatos);
+});
+
+// --- Agregar faltante ---
 formulario.addEventListener("submit", async (evento) => {
   evento.preventDefault();
   const texto = inputItem.value.trim();
@@ -138,6 +208,7 @@ formulario.addEventListener("submit", async (evento) => {
     proveedor: selectProveedor.value,
     llegado: false,
     llegadoEn: null,
+    corteId: null,
     creado: serverTimestamp()
   });
 
@@ -157,40 +228,80 @@ function formatearFecha(timestamp) {
   return fecha.toLocaleDateString("es-AR");
 }
 
+// Crea el <li> de un ítem (reutilizado en todos los grupos)
+function crearItemLi(item) {
+  const li = document.createElement("li");
+  if (item.llegado) li.classList.add("llegado");
+
+  const infoFecha = item.llegado && item.llegadoEn
+    ? `<span class="fecha">Llegó: ${formatearFecha(item.llegadoEn)}</span>`
+    : "";
+
+  li.innerHTML = `
+    <input type="checkbox" ${item.llegado ? "checked" : ""} ${mostrandoArchivados ? "disabled" : ""}>
+    <span class="texto">${item.texto}</span>
+    ${infoFecha}
+    <span class="proveedor">${item.proveedor || ""}</span>
+  `;
+
+  if (!mostrandoArchivados) {
+    const checkbox = li.querySelector("input");
+    checkbox.addEventListener("change", async () => {
+      const itemRef = doc(db, "faltantes", item.id);
+      await updateDoc(itemRef, {
+        llegado: checkbox.checked,
+        llegadoEn: checkbox.checked ? serverTimestamp() : null
+      });
+    });
+  }
+
+  return li;
+}
+
 function dibujarLista(items) {
   lista.innerHTML = "";
 
-  items
+  const filtrados = items
     .filter((item) => proveedorActivo === "Todos" || item.proveedor === proveedorActivo)
-    .filter((item) => mostrandoArchivados ? estaArchivado(item) : !estaArchivado(item))
-    .forEach((item) => {
-      const li = document.createElement("li");
-      if (item.llegado) li.classList.add("llegado");
+    .filter((item) => mostrandoArchivados ? estaArchivado(item) : !estaArchivado(item));
 
-      const infoFecha = item.llegado && item.llegadoEn
-        ? `<span class="fecha">Llegó: ${formatearFecha(item.llegadoEn)}</span>`
-        : "";
+  // Vista simple: "Todos" o archivados, sin agrupar por corte
+  if (proveedorActivo === "Todos" || mostrandoArchivados) {
+    filtrados.forEach((item) => lista.appendChild(crearItemLi(item)));
+    return;
+  }
 
-      li.innerHTML = `
-        <input type="checkbox" ${item.llegado ? "checked" : ""} ${mostrandoArchivados ? "disabled" : ""}>
-        <span class="texto">${item.texto}</span>
-        ${infoFecha}
-        <span class="proveedor">${item.proveedor || ""}</span>
-      `;
+  // Vista de un proveedor puntual: agrupamos por corte, del más viejo al más nuevo
+  const cortesDeEsteProveedor = listaCortes.filter((c) => c.proveedor === proveedorActivo);
 
-      if (!mostrandoArchivados) {
-        const checkbox = li.querySelector("input");
-        checkbox.addEventListener("change", async () => {
-          const itemRef = doc(db, "faltantes", item.id);
-          await updateDoc(itemRef, {
-            llegado: checkbox.checked,
-            llegadoEn: checkbox.checked ? serverTimestamp() : null
-          });
-        });
-      }
+  cortesDeEsteProveedor.forEach((corte, indice) => {
+    const itemsDelCorte = filtrados
+      .filter((item) => item.corteId === corte.id)
+      .sort((a, b) => (a.creado?.toMillis() || 0) - (b.creado?.toMillis() || 0));
 
-      lista.appendChild(li);
-    });
+    if (itemsDelCorte.length === 0) return;
+
+    const divisor = document.createElement("div");
+    divisor.classList.add("divisor-corte");
+    divisor.textContent = `Pedido ${indice + 1} — ${formatearFecha(corte.fecha)}`;
+    lista.appendChild(divisor);
+
+    itemsDelCorte.forEach((item) => lista.appendChild(crearItemLi(item)));
+  });
+
+  // Al final, los que todavía no fueron incluidos en ningún pedido
+  const sinPedir = filtrados
+    .filter((item) => !item.corteId)
+    .sort((a, b) => (a.creado?.toMillis() || 0) - (b.creado?.toMillis() || 0));
+
+  if (sinPedir.length > 0) {
+    const divisor = document.createElement("div");
+    divisor.classList.add("divisor-corte");
+    divisor.textContent = "Sin pedir todavía";
+    lista.appendChild(divisor);
+
+    sinPedir.forEach((item) => lista.appendChild(crearItemLi(item)));
+  }
 }
 
 const consultaFaltantes = query(faltantesRef, orderBy("creado", "desc"));
