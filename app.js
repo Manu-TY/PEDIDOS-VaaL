@@ -34,6 +34,7 @@ const botonNuevoProveedor = document.getElementById("botonNuevoProveedor");
 const formNuevoProveedor = document.getElementById("formNuevoProveedor");
 const inputNuevoProveedor = document.getElementById("inputNuevoProveedor");
 const botonPasarPedido = document.getElementById("botonPasarPedido");
+const botonEliminarProveedor = document.getElementById("botonEliminarProveedor");
 const botonArchivados = document.getElementById("botonArchivados");
 
 let proveedorActivo = "Todos";
@@ -128,11 +129,8 @@ function dibujarPestañas() {
   nombres.forEach((nombre) => {
     const pestaña = document.createElement("div");
     pestaña.classList.add("pestaña");
+    pestaña.textContent = nombre;
     if (nombre === proveedorActivo) pestaña.classList.add("activa");
-
-    const etiqueta = document.createElement("span");
-    etiqueta.textContent = nombre;
-    pestaña.appendChild(etiqueta);
 
     pestaña.addEventListener("click", () => {
       proveedorActivo = nombre;
@@ -141,18 +139,6 @@ function dibujarPestañas() {
       dibujarLista(ultimosDatos);
     });
 
-    if (nombre !== "Todos") {
-      const prov = listaProveedores.find((p) => p.nombre === nombre);
-      const borrar = document.createElement("span");
-      borrar.textContent = "×";
-      borrar.classList.add("borrar-proveedor");
-      borrar.addEventListener("click", (evento) => {
-        evento.stopPropagation(); // para que no dispare el clic de la pestaña
-        borrarProveedor(prov);
-      });
-      pestaña.appendChild(borrar);
-    }
-
     pestañasDiv.insertBefore(pestaña, botonNuevoProveedor);
   });
 }
@@ -160,7 +146,14 @@ function dibujarPestañas() {
 function actualizarBotonPasarPedido() {
   const debeVerse = proveedorActivo !== "Todos" && !mostrandoArchivados;
   botonPasarPedido.classList.toggle("visible", debeVerse);
+  botonEliminarProveedor.classList.toggle("visible", debeVerse);
 }
+
+// --- Eliminar proveedor (desde botón aparte) ---
+botonEliminarProveedor.addEventListener("click", () => {
+  const prov = listaProveedores.find((p) => p.nombre === proveedorActivo);
+  if (prov) borrarProveedor(prov);
+});
 
 // --- Pasar pedido (crear un corte) ---
 botonPasarPedido.addEventListener("click", async () => {
@@ -228,7 +221,6 @@ function formatearFecha(timestamp) {
   return fecha.toLocaleDateString("es-AR");
 }
 
-// Crea el <li> de un ítem (reutilizado en todos los grupos)
 function crearItemLi(item) {
   const li = document.createElement("li");
   if (item.llegado) li.classList.add("llegado");
@@ -265,13 +257,11 @@ function dibujarLista(items) {
     .filter((item) => proveedorActivo === "Todos" || item.proveedor === proveedorActivo)
     .filter((item) => mostrandoArchivados ? estaArchivado(item) : !estaArchivado(item));
 
-  // Vista simple: "Todos" o archivados, sin agrupar por corte
   if (proveedorActivo === "Todos" || mostrandoArchivados) {
     filtrados.forEach((item) => lista.appendChild(crearItemLi(item)));
     return;
   }
 
-  // Vista de un proveedor puntual: agrupamos por corte, del más viejo al más nuevo
   const cortesDeEsteProveedor = listaCortes.filter((c) => c.proveedor === proveedorActivo);
 
   cortesDeEsteProveedor.forEach((corte, indice) => {
@@ -289,7 +279,6 @@ function dibujarLista(items) {
     itemsDelCorte.forEach((item) => lista.appendChild(crearItemLi(item)));
   });
 
-  // Al final, los que todavía no fueron incluidos en ningún pedido
   const sinPedir = filtrados
     .filter((item) => !item.corteId)
     .sort((a, b) => (a.creado?.toMillis() || 0) - (b.creado?.toMillis() || 0));
