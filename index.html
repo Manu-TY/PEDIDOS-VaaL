@@ -82,7 +82,7 @@
     }
 
     .pestaña {
-      padding: 8px 10px 8px 14px;
+      padding: 8px 14px;
       border: 2px solid var(--tinta);
       cursor: pointer;
       font-size: 13px;
@@ -90,9 +90,6 @@
       color: var(--tinta);
       background: var(--ocre);
       font-family: 'Work Sans', sans-serif;
-      display: flex;
-      align-items: center;
-      gap: 8px;
     }
 
     .pestaña:nth-child(3n+2) { background: var(--azul-medio); color: var(--crema); }
@@ -103,13 +100,6 @@
       color: var(--crema);
       box-shadow: 3px 3px 0 var(--naranja-fuego);
     }
-
-    .borrar-proveedor {
-      font-weight: 700;
-      opacity: 0.7;
-      padding: 0 2px;
-    }
-    .borrar-proveedor:hover { opacity: 1; }
 
     #botonNuevoProveedor {
       background: var(--crema);
@@ -142,6 +132,15 @@
     }
     #botonPasarPedido.visible { display: inline-block; }
 
+    #botonEliminarProveedor {
+      display: none;
+      margin-bottom: 16px;
+      margin-left: 8px;
+      background: var(--rojo-casco);
+      color: var(--crema);
+    }
+    #botonEliminarProveedor.visible { display: inline-block; }
+
     #botonArchivados {
       display: block;
       background: none;
@@ -162,78 +161,4 @@
       font-size: 12px;
       font-weight: 700;
       color: var(--crema);
-      text-shadow: 1px 1px 0 var(--tinta);
-      letter-spacing: 0.5px;
-    }
-
-    ul { list-style: none; padding: 0; }
-
-    li {
-      background: var(--crema);
-      padding: 14px;
-      margin-bottom: 10px;
-      border: 3px solid var(--tinta);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      box-shadow: 4px 4px 0 rgba(0,0,0,0.35);
-    }
-
-    li input[type="checkbox"] {
-      width: 20px;
-      height: 20px;
-      accent-color: var(--rojo-casco);
-    }
-
-    li .texto { font-weight: 600; color: var(--tinta); }
-
-    li .proveedor {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--crema);
-      background: var(--azul-noche);
-      padding: 4px 8px;
-      margin-left: auto;
-      letter-spacing: 0.5px;
-    }
-
-    li .fecha { font-size: 12px; color: #777; }
-
-    li.llegado {
-      background: #EFE7DA;
-      border-style: dashed;
-    }
-    li.llegado span.texto {
-      text-decoration: line-through;
-      color: #999;
-    }
-  </style>
-</head>
-<body>
-
-  <h1>Repuestos faltantes</h1>
-
-  <form id="formulario">
-    <select id="selectProveedor"></select>
-    <input type="text" id="inputItem" placeholder="Ej: filtro de aceite Hilux x3" required>
-    <button type="submit">Agregar</button>
-  </form>
-
-  <div id="pestañas">
-    <button type="button" id="botonNuevoProveedor">+ Proveedor</button>
-  </div>
-
-  <form id="formNuevoProveedor">
-    <input type="text" id="inputNuevoProveedor" placeholder="Nombre del proveedor nuevo">
-    <button type="submit">Guardar</button>
-  </form>
-
-  <button type="button" id="botonPasarPedido">Pasar pedido</button>
-
-  <button id="botonArchivados">Ver archivados</button>
-
-  <ul id="lista"></ul>
-
-  <script type="module" src="app.js"></script>
-</body>
-</html>
+      text-shadow: 1px 1px
