@@ -16,34 +16,26 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// EDITÁ ESTA LISTA con tus proveedores reales (entre comillas, separados por coma)
 const PROVEEDORES = [
-  "CROMOSOL",
-  "CHEVROLET",
-  "LIDERCAR",
-  "KAVIGO",
-  "DISTRIB OMAR",
-  "FIAT",
-  "RICARDO MR",
-  "SABO",
-  "AUTONAUTICA",
-  "ALTRI",
-  "PASTILLAS",
-  "PEUGEOT",
-  "PATTI",
-  "KUARZO"
+  "CROMOSOL", "CHEVROLET", "LIDERCAR", "KAVIGO", "DISTRIB OMAR",
+  "FIAT", "RICARDO MR", "SABO", "AUTONAUTICA", "ALTRI",
+  "PASTILLAS", "PEUGEOT", "PATTI", "KUARZO"
 ];
+
+const DIAS_PARA_ARCHIVAR = 7;
+const MILISEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
 
 const formulario = document.getElementById("formulario");
 const selectProveedor = document.getElementById("selectProveedor");
 const inputItem = document.getElementById("inputItem");
 const lista = document.getElementById("lista");
 const pestañasDiv = document.getElementById("pestañas");
+const botonArchivados = document.getElementById("botonArchivados");
 
 let proveedorActivo = "Todos";
 let ultimosDatos = [];
+let mostrandoArchivados = false;
 
-// Llenamos el <select> del formulario con los proveedores
 PROVEEDORES.forEach((nombre) => {
   const opcion = document.createElement("option");
   opcion.value = nombre;
@@ -51,7 +43,6 @@ PROVEEDORES.forEach((nombre) => {
   selectProveedor.appendChild(opcion);
 });
 
-// Dibuja las pestañas: "Todos" + una por proveedor
 function dibujarPestañas() {
   pestañasDiv.innerHTML = "";
   const nombres = ["Todos", ...PROVEEDORES];
@@ -73,6 +64,13 @@ function dibujarPestañas() {
 }
 dibujarPestañas();
 
+// Al hacer clic en "Ver archivados" / "Ver activos", cambiamos de vista
+botonArchivados.addEventListener("click", () => {
+  mostrandoArchivados = !mostrandoArchivados;
+  botonArchivados.textContent = mostrandoArchivados ? "← Volver a faltantes" : "Ver archivados";
+  dibujarLista(ultimosDatos);
+});
+
 const faltantesRef = collection(db, "faltantes");
 
 formulario.addEventListener("submit", async (evento) => {
@@ -84,32 +82,59 @@ formulario.addEventListener("submit", async (evento) => {
     texto: texto,
     proveedor: selectProveedor.value,
     llegado: false,
+    llegadoEn: null,
     creado: serverTimestamp()
   });
 
   inputItem.value = "";
 });
 
+// Calcula si un ítem llegado ya pasó los 7 días
+function estaArchivado(item) {
+  if (!item.llegado || !item.llegadoEn) return false;
+  const ahora = Date.now();
+  const fechaLlegada = item.llegadoEn.toMillis();
+  return (ahora - fechaLlegada) > (DIAS_PARA_ARCHIVAR * MILISEGUNDOS_POR_DIA);
+}
+
+// Formatea la fecha en algo legible, ej: "05/09/2026"
+function formatearFecha(timestamp) {
+  if (!timestamp) return "";
+  const fecha = timestamp.toDate();
+  return fecha.toLocaleDateString("es-AR");
+}
+
 function dibujarLista(items) {
   lista.innerHTML = "";
 
   items
     .filter((item) => proveedorActivo === "Todos" || item.proveedor === proveedorActivo)
+    .filter((item) => mostrandoArchivados ? estaArchivado(item) : !estaArchivado(item))
     .forEach((item) => {
       const li = document.createElement("li");
       if (item.llegado) li.classList.add("llegado");
 
+      const infoFecha = item.llegado && item.llegadoEn
+        ? `<span class="fecha">Llegó: ${formatearFecha(item.llegadoEn)}</span>`
+        : "";
+
       li.innerHTML = `
-        <input type="checkbox" ${item.llegado ? "checked" : ""}>
+        <input type="checkbox" ${item.llegado ? "checked" : ""} ${mostrandoArchivados ? "disabled" : ""}>
         <span class="texto">${item.texto}</span>
+        ${infoFecha}
         <span class="proveedor">${item.proveedor || ""}</span>
       `;
 
-      const checkbox = li.querySelector("input");
-      checkbox.addEventListener("change", async () => {
-        const itemRef = doc(db, "faltantes", item.id);
-        await updateDoc(itemRef, { llegado: checkbox.checked });
-      });
+      if (!mostrandoArchivados) {
+        const checkbox = li.querySelector("input");
+        checkbox.addEventListener("change", async () => {
+          const itemRef = doc(db, "faltantes", item.id);
+          await updateDoc(itemRef, {
+            llegado: checkbox.checked,
+            llegadoEn: checkbox.checked ? serverTimestamp() : null
+          });
+        });
+      }
 
       lista.appendChild(li);
     });
@@ -121,6 +146,7 @@ onSnapshot(consulta, (snapshot) => {
   ultimosDatos = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
   dibujarLista(ultimosDatos);
 });
+
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js");
 }
