@@ -1,4 +1,4 @@
-const CACHE_NAME = "pedidos-vaal-v3";
+const CACHE_NAME = "pedidos-vaal-v4";
 const ARCHIVOS = [
   "index.html",
   "app.js",
