@@ -82,7 +82,7 @@
     }
 
     .pestaña {
-      padding: 8px 14px;
+      padding: 8px 10px 8px 14px;
       border: 2px solid var(--tinta);
       cursor: pointer;
       font-size: 13px;
@@ -90,6 +90,9 @@
       color: var(--tinta);
       background: var(--ocre);
       font-family: 'Work Sans', sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .pestaña:nth-child(3n+2) { background: var(--azul-medio); color: var(--crema); }
@@ -100,6 +103,13 @@
       color: var(--crema);
       box-shadow: 3px 3px 0 var(--naranja-fuego);
     }
+
+    .borrar-proveedor {
+      font-weight: 700;
+      opacity: 0.7;
+      padding: 0 2px;
+    }
+    .borrar-proveedor:hover { opacity: 1; }
 
     #botonNuevoProveedor {
       background: var(--crema);
@@ -124,7 +134,16 @@
       border: 2px solid var(--tinta);
     }
 
+    #botonPasarPedido {
+      display: none;
+      margin-bottom: 16px;
+      background: var(--azul-noche);
+      color: var(--crema);
+    }
+    #botonPasarPedido.visible { display: inline-block; }
+
     #botonArchivados {
+      display: block;
       background: none;
       border: none;
       color: var(--crema);
@@ -135,6 +154,17 @@
       font-weight: 600;
     }
     #botonArchivados:hover { background: none; color: var(--ocre); }
+
+    .divisor-corte {
+      border-top: 3px solid var(--tinta);
+      margin: 20px 0 10px;
+      padding-top: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--crema);
+      text-shadow: 1px 1px 0 var(--tinta);
+      letter-spacing: 0.5px;
+    }
 
     ul { list-style: none; padding: 0; }
 
@@ -197,6 +227,8 @@
     <input type="text" id="inputNuevoProveedor" placeholder="Nombre del proveedor nuevo">
     <button type="submit">Guardar</button>
   </form>
+
+  <button type="button" id="botonPasarPedido">Pasar pedido</button>
 
   <button id="botonArchivados">Ver archivados</button>
 
