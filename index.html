@@ -12,12 +12,14 @@
     #selectProveedor, #inputItem { padding: 10px; font-size: 16px; }
     #inputItem { flex: 1; min-width: 200px; }
     button { padding: 10px 16px; font-size: 16px; cursor: pointer; }
-    #pestañas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+    #pestañas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
     .pestaña { padding: 8px 12px; background: #ddd; border-radius: 6px; cursor: pointer; font-size: 14px; }
     .pestaña.activa { background: #333; color: white; }
+    #botonArchivados { background: none; border: none; color: #555; text-decoration: underline; cursor: pointer; padding: 0 0 16px 0; font-size: 14px; }
     ul { list-style: none; padding: 0; }
     li { background: white; padding: 12px; margin-bottom: 8px; border-radius: 6px; display: flex; align-items: center; gap: 10px; }
     li .proveedor { font-size: 12px; color: #888; margin-left: auto; }
+    li .fecha { font-size: 12px; color: #888; }
     li.llegado span.texto { text-decoration: line-through; color: #999; }
   </style>
 </head>
@@ -32,6 +34,8 @@
   </form>
 
   <div id="pestañas"></div>
+
+  <button id="botonArchivados">Ver archivados</button>
 
   <ul id="lista"></ul>
 
