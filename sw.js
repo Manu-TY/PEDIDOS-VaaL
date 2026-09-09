@@ -1,33 +1,40 @@
-const CACHE_NAME = "pedidos-vaal-v6";
+const CACHE_NAME = "pedidos-vaal-v7";
 const ARCHIVOS = [
   "index.html",
   "app.js",
   "manifest.json"
 ];
 
-// Cuando se instala, guarda los archivos en caché
+// Al instalar una versión nueva, la activamos enseguida (sin esperar a cerrar todo)
 self.addEventListener("install", (evento) => {
+  self.skipWaiting();
   evento.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ARCHIVOS))
   );
 });
 
-// Cuando pide un archivo, primero mira si está en caché
-self.addEventListener("fetch", (evento) => {
-  evento.respondWith(
-    caches.match(evento.request).then((respuesta) => respuesta || fetch(evento.request))
+// Al activarse, toma control de las ventanas abiertas y borra cachés viejas
+self.addEventListener("activate", (evento) => {
+  evento.waitUntil(
+    Promise.all([
+      caches.keys().then((nombres) =>
+        Promise.all(nombres.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
+      ),
+      self.clients.claim()
+    ])
   );
 });
 
-// Borra cachés viejos cuando cambia CACHE_NAME
-self.addEventListener("activate", (evento) => {
-  evento.waitUntil(
-    caches.keys().then((nombres) =>
-      Promise.all(
-        nombres
-          .filter((nombre) => nombre !== CACHE_NAME)
-          .map((nombre) => caches.delete(nombre))
-      )
-    )
+// Al pedir un archivo: primero intenta traerlo de internet;
+// si no hay conexión, usa la copia guardada
+self.addEventListener("fetch", (evento) => {
+  evento.respondWith(
+    fetch(evento.request)
+      .then((respuestaRed) => {
+        const copia = respuestaRed.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(evento.request, copia));
+        return respuestaRed;
+      })
+      .catch(() => caches.match(evento.request))
   );
 });
