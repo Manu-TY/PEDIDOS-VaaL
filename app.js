@@ -234,6 +234,7 @@ function crearItemLi(item) {
     <span class="texto">${item.texto}</span>
     ${infoFecha}
     <span class="proveedor">${item.proveedor || ""}</span>
+    <span class="borrar-item" title="Borrar ítem">×</span>
   `;
 
   if (!mostrandoArchivados) {
@@ -246,6 +247,13 @@ function crearItemLi(item) {
       });
     });
   }
+
+  const botonBorrar = li.querySelector(".borrar-item");
+  botonBorrar.addEventListener("click", async () => {
+    const confirmar = confirm(`¿Borrar "${item.texto}"? Esta acción no se puede deshacer.`);
+    if (!confirmar) return;
+    await deleteDoc(doc(db, "faltantes", item.id));
+  });
 
   return li;
 }
