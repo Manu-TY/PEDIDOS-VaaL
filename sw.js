@@ -1,11 +1,10 @@
-const CACHE_NAME = "pedidos-vaal-v7";
+const CACHE_NAME = "pedidos-vaal-v8";
 const ARCHIVOS = [
   "index.html",
   "app.js",
   "manifest.json"
 ];
 
-// Al instalar una versión nueva, la activamos enseguida (sin esperar a cerrar todo)
 self.addEventListener("install", (evento) => {
   self.skipWaiting();
   evento.waitUntil(
@@ -13,7 +12,6 @@ self.addEventListener("install", (evento) => {
   );
 });
 
-// Al activarse, toma control de las ventanas abiertas y borra cachés viejas
 self.addEventListener("activate", (evento) => {
   evento.waitUntil(
     Promise.all([
@@ -25,8 +23,6 @@ self.addEventListener("activate", (evento) => {
   );
 });
 
-// Al pedir un archivo: primero intenta traerlo de internet;
-// si no hay conexión, usa la copia guardada
 self.addEventListener("fetch", (evento) => {
   evento.respondWith(
     fetch(evento.request)
